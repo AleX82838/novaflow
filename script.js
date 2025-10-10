@@ -15,14 +15,14 @@ const WHATSAPP_MESSAGE_BASE = 'Hola, quiero consultar sobre un producto de NOVAF
 
 /* Productos (usa tus imágenes en img/) */
 const PRODUCTS = [
-  { id:'f1', title:'Taco al Pastor', price:65, category:'food', desc:'Taco tradicional. 1 pieza.', img:'img/product_taco.jpg' },
-  { id:'f2', title:'Bowl Veggie', price:120, category:'food', desc:'Bowl con vegetales y proteína.', img:'img/product_bowl.jpg' },
-  { id:'d1', title:'Café Americano', price:45, category:'drinks', desc:'Café filtrado 12oz.', img:'img/product_cafe.jpg' },
-  { id:'d2', title:'Jugo Natural', price:55, category:'drinks', desc:'Jugo recién exprimido.', img:'img/product_jugo.jpg' },
-  { id:'c1', title:'Playera NOVAFLOW', price:450, category:'clothing', desc:'Edición 2025, algodón.', img:'img/product_tee.jpg' },
-  { id:'c2', title:'Sudadera NOVAFLOW', price:850, category:'clothing', desc:'Capucha, logo bordado.', img:'img/product_hoodie.jpg' },
-  { id:'col1', title:'Figura Coleccionable #7', price:1200, category:'collectibles', desc:'Edición limitada.', img:'img/product_fig.jpg' },
-  { id:'col2', title:'Tarjeta autografiada', price:350, category:'collectibles', desc:'Serie numerada.', img:'img/product_card.jpg' }
+  { id:'f1', title:'Producto', price:65, category:'food', desc:'Taco tradicional. 1 pieza.', img:'img/product_taco.jpg' },
+  { id:'f2', title:'Producto', price:120, category:'food', desc:'Bowl con vegetales y proteína.', img:'img/product_bowl.jpg' },
+  { id:'d1', title:'Producto', price:45, category:'drinks', desc:'Café filtrado 12oz.', img:'img/product_cafe.jpg' },
+  { id:'d2', title:'Producto', price:55, category:'drinks', desc:'Jugo recién exprimido.', img:'img/product_jugo.jpg' },
+  { id:'c1', title:'Producto', price:450, category:'clothing', desc:'Edición 2025, algodón.', img:'img/product_tee.jpg' },
+  { id:'c2', title:'Producto', price:850, category:'clothing', desc:'Capucha, logo bordado.', img:'img/product_hoodie.jpg' },
+  { id:'col1', title:'Producto', price:1200, category:'collectibles', desc:'Edición limitada.', img:'img/product_fig.jpg' },
+  { id:'col2', title:'Producto', price:350, category:'collectibles', desc:'Serie numerada.', img:'img/product_card.jpg' }
 ];
 
 const FEATURED = [PRODUCTS[4], PRODUCTS[5], PRODUCTS[6]];
@@ -446,4 +446,5 @@ function showToast(text, ms=3000){
   setTimeout(()=> { t.style.transition='opacity 400ms'; t.style.opacity='0'; setTimeout(()=> wrap.removeChild(t), 450); }, ms);
 }
 function debounce(fn, wait=200){ let t; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn.apply(this,a), wait); }; }
+
 
