@@ -5,11 +5,10 @@
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>NOVAFLOW — Mercado & Bazar</title>
 
- <link rel="manifest" href="manifest.json">
-<meta name="theme-color" content="#000000">
-<meta name="apple-mobile-web-app-capable" content="yes">
-<meta name="apple-mobile-web-app-status-bar-style" content="black">
-
+  <!-- Manifest (PWA) -->
+  <link rel="manifest" href="manifest.json">
+  <meta name="theme-color" content="#071018">
+  <meta name="apple-mobile-web-app-capable" content="yes">
 
   <!-- Tipografías -->
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
@@ -23,8 +22,9 @@
       <div class="header-inner">
         <div class="brand" role="banner">
           <div id="logo-placeholder" class="logo" aria-hidden="true">
-            <img src="novaflow.png" alt="NOVAFLOW">
-            <svg width="48" height="48" viewBox="0 0 100 100" aria-hidden="true">
+            <!-- Reemplaza por tu imagen: <img src="img/logo.png" alt="NOVAFLOW"> -->
+            <img src="novaflow.png" alt="NOVAFLOW" onerror="this.style.display='none'">
+            <svg width="48" height="48" viewBox="0 0 100 100" aria-hidden="true" style="display:none" id="logo-svg">
               <rect rx="14" width="100" height="100" fill="#0b1116"/>
               <text x="50%" y="56%" text-anchor="middle" font-family="Inter, sans-serif" font-weight="800" font-size="42" fill="#d4b36a">N</text>
             </svg>
@@ -47,7 +47,7 @@
           <div class="clock" id="live-clock" aria-live="polite">--:--:--</div>
           <button id="theme-toggle" class="icon-btn" title="Cambiar tema">🌓</button>
           <button id="cart-toggle" class="cart-btn" aria-label="Abrir carrito">🧺 <span id="cart-count">0</span></button>
-          <button id="install-btn" class="icon-btn" title="Instalar NOVAFLOW" style="display:none">📲 Instalar</button>
+          <button id="install-btn" class="icon-btn" title="Instalar NOVAFLOW" style="display:none">📲</button>
         </div>
       </div>
     </header>
@@ -59,7 +59,7 @@
         <div class="hero-inner">
           <div class="hero-left">
             <h1>Bienvenido a <span class="brand-strong">NOVAFLOW</span></h1>
-            <p class="lead">Comida, bebidas, ropa y artículos coleccionables. Acompáñanos en nuestros bazares presenciales.</p>
+            <p class="lead">Comida, bebidas, ropa y artículos coleccionables. Productos curados con estilo. Acompáñanos en nuestros bazares presenciales.</p>
 
             <div class="hero-cta">
               <button class="btn-primary" data-target="catalog">Explorar tienda</button>
@@ -70,7 +70,7 @@
               <div class="event-head">
                 <div>
                   <strong>Próximo Bazar</strong>
-                  <div class="muted">26 de diciembre de 2025 · 4:00 PM · Juchitan De Zaragoza Oax. </div>
+                  <div class="muted">26 de diciembre de 2025 · 4:00 PM · Ciudad de México</div>
                 </div>
               </div>
               <div id="countdown" class="countdown" aria-live="polite">
@@ -86,13 +86,7 @@
             <div class="search-card card">
               <label for="search">Buscar productos</label>
               <input id="search" type="search" placeholder="Ej. playera NOVAFLOW" />
-              <div class="quick-filters">
-                <button class="chip active" data-cat="all">Todas</button>
-                <button class="chip" data-cat="food">Comida</button>
-                <button class="chip" data-cat="drinks">Bebidas</button>
-                <button class="chip" data-cat="clothing">Ropa</button>
-                <button class="chip" data-cat="collectibles">Coleccionables</button>
-              </div>
+              <div class="quick-filters" id="category-chips"></div>
             </div>
 
             <div class="estimate card">
@@ -130,20 +124,16 @@
         <div id="products" class="products-grid" aria-live="polite"></div>
       </section>
 
-      <!-- 🔥 PRODUCTOS DESTACADOS -->
-<section id="destacados" class="section destacados-section">
-  <h2 class="section-title">Productos Destacados</h2>
-  <div class="destacados-container">
-    <button class="carousel-btn prev" id="prevBtn">&#10094;</button>
-
-    <div class="destacados-carousel" id="destacadosCarousel">
-      <!-- Los productos se insertan dinámicamente desde script.js -->
-    </div>
-
-    <button class="carousel-btn next" id="nextBtn">&#10095;</button>
-  </div>
-</section>
-
+      <!-- FEATURED (mejorado: swipe sin flechas) -->
+      <section id="featured" class="section">
+        <h2>Destacados</h2>
+        <div class="carousel card" id="featured-carousel" aria-roledescription="carousel">
+          <div class="carousel-track-wrapper">
+            <div class="carousel-track" id="carousel-track"></div>
+          </div>
+          <div class="carousel-dots" id="carousel-dots" aria-hidden="false"></div>
+        </div>
+      </section>
 
       <!-- EVENTS -->
       <section id="events" class="section">
@@ -175,6 +165,14 @@
         </div>
       </section>
     </main>
+
+    <!-- PRODUCT DETAIL MODAL -->
+    <div id="product-modal" class="modal" aria-hidden="true">
+      <div class="modal-inner card">
+        <button class="modal-close icon-btn" id="modal-close">✕</button>
+        <div id="modal-content"></div>
+      </div>
+    </div>
 
     <!-- CART SIDEBAR -->
     <aside id="cart" class="cart-sidebar" aria-hidden="true">
@@ -224,18 +222,17 @@
     </footer>
   </div>
 
-  <!-- App script -->
   <script src="script.js" defer></script>
 
-  <!-- register service worker -->
+  <!-- Service worker registration (si tienes service-worker.js) -->
   <script>
-  if ('serviceWorker' in navigator) {
-    window.addEventListener('load', () => {
-      navigator.serviceWorker.register('service-worker.js')
-        .then(reg => console.log('✅ Service Worker registrado:', reg.scope))
-        .catch(err => console.log('❌ Error registrando SW:', err));
-    });
-  }
-</script>
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('service-worker.js').then(reg => {
+          console.log('SW registrado:', reg.scope);
+        }).catch(err => console.warn('Error registrando SW:', err));
+      });
+    }
+  </script>
 </body>
 </html>
