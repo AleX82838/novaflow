@@ -1,11 +1,6 @@
-// =======================================
-// NOVAFLOW - Service Worker v2 (Offline)
-// =======================================
-
-const CACHE_NAME = 'novaflow-cache-v2';
+// NOVAFLOW v3 - Service Worker
+const CACHE_NAME = 'novaflow-cache-v3';
 const OFFLINE_URL = '/offline.html';
-
-// Archivos que se guardan en caché
 const urlsToCache = [
   '/',
   '/index.html',
@@ -13,52 +8,43 @@ const urlsToCache = [
   '/script.js',
   '/manifest.json',
   '/offline.html',
+  '/assets/intronivi.mp4',
   '/img/icons/icon-192.png',
   '/img/icons/icon-512.png'
 ];
 
-// Instala el Service Worker
-self.addEventListener('install', event => {
-  console.log('📦 Instalando NOVAFLOW SW...');
-  event.waitUntil(
-    caches.open(CACHE_NAME).then(cache => cache.addAll(urlsToCache))
-  );
+self.addEventListener('install', event=>{
+  event.waitUntil((async ()=>{
+    const cache = await caches.open(CACHE_NAME);
+    try { await cache.addAll(urlsToCache); } catch(e){ console.warn('SW: some assets failed to cache', e); }
+  })());
   self.skipWaiting();
 });
 
-// Activa y limpia versiones antiguas
-self.addEventListener('activate', event => {
-  console.log('✅ Activando Service Worker NOVAFLOW...');
-  event.waitUntil(
-    caches.keys().then(keys =>
-      Promise.all(keys.map(key => {
-        if (key !== CACHE_NAME) return caches.delete(key);
-      }))
-    )
-  );
-  self.clients.claim();
+self.addEventListener('activate', event=>{
+  event.waitUntil((async ()=>{
+    const keys = await caches.keys();
+    await Promise.all(keys.map(k => k !== CACHE_NAME ? caches.delete(k) : Promise.resolve()));
+    await self.clients.claim();
+  })());
 });
 
-// Intercepta peticiones y sirve desde caché (modo offline completo)
-self.addEventListener('fetch', event => {
-  if (event.request.mode === 'navigate') {
-    event.respondWith(
-      fetch(event.request).catch(() => caches.match(OFFLINE_URL))
-    );
-  } else {
-    event.respondWith(
-      caches.match(event.request).then(response => {
-        return (
-          response ||
-          fetch(event.request).then(networkResp => {
-            // Guarda en caché dinámicamente nuevos recursos
-            return caches.open(CACHE_NAME).then(cache => {
-              cache.put(event.request, networkResp.clone());
-              return networkResp;
-            });
-          })
-        );
-      })
-    );
+self.addEventListener('fetch', event=>{
+  if(event.request.method !== 'GET') return;
+  if(event.request.mode === 'navigate'){
+    event.respondWith((async ()=>{
+      try { return await fetch(event.request); } catch(e){ const cache = await caches.open(CACHE_NAME); return await cache.match(OFFLINE_URL); }
+    })());
+    return;
   }
+  event.respondWith((async ()=>{
+    const cache = await caches.open(CACHE_NAME);
+    const cached = await cache.match(event.request);
+    if(cached) return cached;
+    try {
+      const resp = await fetch(event.request);
+      if(resp && resp.status === 200) cache.put(event.request, resp.clone());
+      return resp;
+    } catch(e){ return cached || (await cache.match(OFFLINE_URL)); }
+  })());
 });
