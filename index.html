@@ -3,173 +3,185 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <title>NOVAFLOW — Mercado & Bazar</title>
-
-  <!-- Manifest (PWA) -->
+  <title>NOVAFLOW — Mercado & Bazar (v3)</title>
+  <meta name="theme-color" content="#07030b">
   <link rel="manifest" href="manifest.json">
-  <meta name="theme-color" content="#071018">
-  <meta name="apple-mobile-web-app-capable" content="yes">
-
-  <!-- Tipografías -->
   <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
-
   <link rel="stylesheet" href="style.css">
 </head>
-<body>
-  <div id="app" class="theme-dark">
-    <!-- HEADER -->
-    <header id="site-header" class="header">
-      <div class="header-inner">
-        <div class="brand" role="banner">
-          <div id="logo-placeholder" class="logo" aria-hidden="true">
-            <!-- Reemplaza por tu imagen: <img src="img/logo.png" alt="NOVAFLOW"> -->
-            <img src="novaflow.png" alt="NOVAFLOW" onerror="this.style.display='none'">
-            <svg width="48" height="48" viewBox="0 0 100 100" aria-hidden="true" style="display:none" id="logo-svg">
-              <rect rx="14" width="100" height="100" fill="#0b1116"/>
-              <text x="50%" y="56%" text-anchor="middle" font-family="Inter, sans-serif" font-weight="800" font-size="42" fill="#d4b36a">N</text>
-            </svg>
-          </div>
-          <div class="brand-text">
-            <div class="title">NOVAFLOW</div>
-            <div class="subtitle">Mercado · Bazar · Eventos</div>
-          </div>
+
+<body data-theme="dark">
+  <!-- ================= Intro (Video de inicio) ================= -->
+  <div id="intro-overlay">
+    <video id="intro-video" autoplay muted playsinline>
+      <source src="intronivi.mp4" type="video/mp4">
+      Tu navegador no soporta video HTML5.
+    </video>
+    <div id="intro-overlay-text">Iniciando NOVAFLOW...</div>
+  </div>
+
+  <!-- ================= Contenido principal ================= -->
+  <div id="app">
+    <!-- ================= Mensaje Bienvenida (opcional) ================= -->
+    <div id="welcomeContainer" class="hidden" aria-hidden="true">
+      <div id="nameInputContainer">
+        <p>¡Bienvenido! Ingresa tu nombre:</p>
+        <input type="text" id="usernameInput" placeholder="Tu nombre" />
+        <button id="saveNameBtn">Guardar</button>
+      </div>
+      <h1 id="welcomeMessage"></h1>
+    </div>
+
+    <!-- ================= Sidebar / Menú ================= -->
+    <aside class="sidebar" id="sidebar" aria-label="Navegación">
+      <div class="sidebar-top">
+        <div class="logo-block">
+          <img src="novaflow.png" alt="NOVAFLOW" onerror="this.style.display='none'">
+          <div class="logo-fallback">N</div>
         </div>
-
-        <nav class="nav" role="navigation" aria-label="Navegación principal">
-          <button class="nav-item active" data-target="home">Inicio</button>
-          <button class="nav-item" data-target="catalog">Categorías</button>
-          <button class="nav-item" data-target="featured">Destacados</button>
-          <button class="nav-item" data-target="events">Eventos</button>
-          <button class="nav-item" data-target="contact">Contacto</button>
-        </nav>
-
-        <div class="header-actions">
-          <div class="clock" id="live-clock" aria-live="polite">--:--:--</div>
-          <button id="theme-toggle" class="icon-btn" title="Cambiar tema">🌓</button>
-          <button id="cart-toggle" class="cart-btn" aria-label="Abrir carrito">🧺 <span id="cart-count">0</span></button>
-          <button id="install-btn" class="icon-btn" title="Instalar NOVAFLOW" style="display:none">📲</button>
+        <div class="brand">
+          <div class="title">NOVAFLOW</div>
+          <div class="subtitle">Mercado · Bazar · Eventos</div>
         </div>
       </div>
-    </header>
 
-    <!-- MAIN -->
-    <main>
-      <!-- HOME -->
-      <section id="home" class="section hero active">
-        <div class="hero-inner">
-          <div class="hero-left">
-            <h1>Bienvenido a <span class="brand-strong">NOVAFLOW</span></h1>
-            <p class="lead">Comida, bebidas, ropa y artículos coleccionables. Productos curados con estilo. Acompáñanos en nuestros bazares presenciales.</p>
+      <nav class="menu" role="navigation" aria-label="Menú principal">
+        <button class="menu-item" data-target="home">Inicio</button>
+        <button class="menu-item" data-target="catalog">Tienda</button>
+        <button class="menu-item" data-target="featured">Destacados</button>
+        <button class="menu-item" data-target="events">Eventos</button>
+        <button class="menu-item" data-target="contact">Contacto</button>
+      </nav>
 
-            <div class="hero-cta">
-              <button class="btn-primary" data-target="catalog">Explorar tienda</button>
-              <button class="btn-outline" data-target="events">Ver eventos</button>
+      <div class="sidebar-bottom">
+        <div class="sidebar-controls">
+          <button id="theme-toggle" class="icon-btn" title="Cambiar tema">🌓</button>
+          <button id="fav-toggle" class="icon-btn" title="Favoritos">★ <span id="fav-count">0</span></button>
+          <button id="cart-toggle" class="cart-btn" aria-label="Abrir carrito">🧺 <span id="cart-count">0</span></button>
+        </div>
+        <div class="sidebar-footer muted small">© <span id="year"></span> NOVAFLOW</div>
+      </div>
+    </aside>
+
+    <!-- ================= Main Wrap ================= -->
+    <div class="main-wrap">
+      <header class="topbar">
+        <button id="menu-collapse" class="hamburger" aria-label="Contraer menú">☰</button>
+        <div class="search-inline">
+          <input id="search" type="search" placeholder="Buscar productos…" aria-label="Buscar productos">
+          <button id="search-clear" class="icon-btn" title="Limpiar búsqueda">✕</button>
+        </div>
+        <div class="topbar-right">
+          <div id="live-clock" class="clock" aria-live="polite">--:--:--</div>
+          <button id="install-btn" class="icon-btn" title="Instalar NOVAFLOW" style="display:none">📲</button>
+        </div>
+      </header>
+
+      <main class="content" id="content" role="main">
+        <!-- HOME -->
+        <section id="home" class="panel active">
+          <div class="panel-grid">
+            <div class="panel-left">
+              <h2>Bienvenido a <span class="brand-strong">NOVAFLOW</span></h2>
+              <p class="lead">Comida, bebidas, ropa y coleccionables — ahora más elegante y funcional.</p>
+
+              <div class="cta-row">
+                <button class="btn-primary" data-target="catalog">Explorar tienda</button>
+                <button class="btn-outline" data-target="events">Ver eventos</button>
+              </div>
+
+              <div class="card event-panel neon-panel">
+                <strong>Próximo Bazar</strong>
+                <div class="muted small">26 de diciembre de 2025 · 4:00 PM · Ciudad de México</div>
+                <div id="countdown-large" class="countdown" aria-live="polite"></div>
+              </div>
             </div>
 
-            <div class="event-panel card">
-              <div class="event-head">
-                <div>
-                  <strong>Próximo Bazar</strong>
-                  <div class="muted">26 de diciembre de 2025 · 4:00 PM · Ciudad de México</div>
+            <aside class="panel-right">
+              <div class="card">
+                <h4>Resumen</h4>
+                <div id="estimate-value">Sin artículos</div>
+                <div class="muted small">Estimado del tiempo de preparación</div>
+              </div>
+
+              <div class="card">
+                <h4>Soporte</h4>
+                <div class="muted small">Chat en vivo y contacto por WhatsApp</div>
+                <div class="mt">
+                  <button id="open-chat" class="btn-primary">Abrir chat</button>
+                  <button id="share-location-btn" class="btn-outline">Compartir ubicación</button>
                 </div>
               </div>
-              <div id="countdown" class="countdown" aria-live="polite">
-                <div class="cd-piece"><span id="cd-days">00</span><small>DÍAS</small></div>
-                <div class="cd-piece"><span id="cd-hours">00</span><small>HORAS</small></div>
-                <div class="cd-piece"><span id="cd-mins">00</span><small>MIN</small></div>
-                <div class="cd-piece"><span id="cd-secs">00</span><small>SEG</small></div>
+            </aside>
+          </div>
+        </section>
+
+        <!-- CATALOG -->
+        <section id="catalog" class="panel">
+          <div class="panel-header">
+            <h2>Tienda</h2>
+            <div class="controls">
+              <label for="sort">Ordenar</label>
+              <select id="sort">
+                <option value="popular">Recomendados</option>
+                <option value="price-asc">Precio: menor → mayor</option>
+                <option value="price-desc">Precio: mayor → menor</option>
+                <option value="rating">Mejor valorados</option>
+              </select>
+            </div>
+          </div>
+
+          <div class="chips" id="category-chips" role="toolbar" aria-label="Categorías"></div>
+
+          <div id="category-featured" class="card neon-panel" style="margin-bottom:12px;display:none">
+            <div id="category-featured-title" style="font-weight:800;margin-bottom:8px"></div>
+            <div class="carousel" id="category-featured-carousel"></div>
+          </div>
+
+          <div id="products" class="products-grid" aria-live="polite"></div>
+        </section>
+
+        <!-- FEATURED -->
+        <section id="featured" class="panel">
+          <h2>Destacados</h2>
+          <div class="carousel card neon-panel" id="featured-carousel" aria-roledescription="carousel">
+            <div class="carousel-track-wrapper">
+              <div class="carousel-track" id="carousel-track"></div>
+            </div>
+            <div class="carousel-dots" id="carousel-dots"></div>
+          </div>
+        </section>
+
+        <!-- EVENTS -->
+        <section id="events" class="panel">
+          <h2>Eventos & Bazar</h2>
+          <div class="card">
+            <p class="muted">Ven a conocer vendedores locales, probar comidas y encontrar artículos exclusivos.</p>
+            <div class="event-large">
+              <div>
+                <h3>Gran Bazar NOVAFLOW</h3>
+                <p>26 de diciembre de 2025 — 4:00 PM · Centro Cultural</p>
+                <button id="whatsapp-send-event" class="btn-primary">Contactar por WhatsApp</button>
               </div>
+              <div id="countdown-small" class="countdown"></div>
             </div>
           </div>
+        </section>
 
-          <aside class="hero-right">
-            <div class="search-card card">
-              <label for="search">Buscar productos</label>
-              <input id="search" type="search" placeholder="Ej. playera NOVAFLOW" />
-              <div class="quick-filters" id="category-chips"></div>
-            </div>
-
-            <div class="estimate card">
-              <h4>Tiempo estimado</h4>
-              <div id="estimate-value">Sin artículos</div>
-              <div class="muted small">Basado en la selección actual</div>
-            </div>
-
-            <div class="support card">
-              <h4>Soporte</h4>
-              <p class="muted small">¿Necesitas ayuda? Usa el chat o contáctanos por WhatsApp.</p>
-              <div class="support-actions">
-                <button id="open-chat" class="btn-outline">Abrir chat</button>
-                <button id="share-location-btn" class="btn-primary">Compartir ubicación</button>
-              </div>
-            </div>
-          </aside>
-        </div>
-      </section>
-
-      <!-- CATALOG -->
-      <section id="catalog" class="section">
-        <div class="section-header">
-          <h2>Categorías</h2>
-          <div class="sort-area">
-            <label for="sort">Ordenar:</label>
-            <select id="sort">
-              <option value="popular">Recomendados</option>
-              <option value="price-asc">Precio: menor → mayor</option>
-              <option value="price-desc">Precio: mayor → menor</option>
-            </select>
+        <!-- CONTACT -->
+        <section id="contact" class="panel">
+          <h2>Contacto</h2>
+          <div class="card">
+            <p>Para colaboraciones: <a href="mailto:contacto@novaflow.example">contacto@novaflow.example</a></p>
           </div>
-        </div>
+        </section>
+      </main>
+    </div>
 
-        <div id="products" class="products-grid" aria-live="polite"></div>
-      </section>
-
-      <!-- FEATURED (mejorado: swipe sin flechas) -->
-      <section id="featured" class="section">
-        <h2>Destacados</h2>
-        <div class="carousel card" id="featured-carousel" aria-roledescription="carousel">
-          <div class="carousel-track-wrapper">
-            <div class="carousel-track" id="carousel-track"></div>
-          </div>
-          <div class="carousel-dots" id="carousel-dots" aria-hidden="false"></div>
-        </div>
-      </section>
-
-      <!-- EVENTS -->
-      <section id="events" class="section">
-        <h2>Eventos & Bazar</h2>
-        <div class="card">
-          <p class="muted">Ven a conocer vendedores locales, probar comidas y encontrar artículos exclusivos.</p>
-          <div class="event-large">
-            <div class="event-left">
-              <h3>Gran Bazar NOVAFLOW</h3>
-              <p>26 de diciembre de 2025 — 4:00 PM · Centro Cultural (por confirmar)</p>
-              <p class="muted">Entrada libre. Exhibidores limitados.</p>
-            </div>
-            <div class="event-right">
-              <div id="countdown-large" class="countdown"></div>
-              <div class="mt">
-                <button id="whatsapp-send-event" class="btn-primary">Contactar por WhatsApp sobre el evento</button>
-              </div>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <!-- CONTACT -->
-      <section id="contact" class="section">
-        <h2>Contacto</h2>
-        <div class="card">
-          <p>Para colaboraciones y ventas a mayoreo escribe a: <a href="mailto:contacto@novaflow.example">contacto@novaflow.example</a></p>
-          <p class="muted small">También puedes enviar tu consulta por WhatsApp usando el botón inferior.</p>
-        </div>
-      </section>
-    </main>
-
-    <!-- PRODUCT DETAIL MODAL -->
+    <!-- PRODUCT MODAL -->
     <div id="product-modal" class="modal" aria-hidden="true">
       <div class="modal-inner card">
-        <button class="modal-close icon-btn" id="modal-close">✕</button>
+        <button id="modal-close" class="modal-close" aria-label="Cerrar">✕</button>
         <div id="modal-content"></div>
       </div>
     </div>
@@ -178,7 +190,7 @@
     <aside id="cart" class="cart-sidebar" aria-hidden="true">
       <div class="cart-header">
         <strong>Carrito</strong>
-        <button id="close-cart" class="icon-btn">✕</button>
+        <button id="close-cart" class="icon-btn" aria-label="Cerrar carrito">✕</button>
       </div>
       <div id="cart-items" class="cart-items"></div>
       <div class="cart-footer">
@@ -188,20 +200,21 @@
           <div class="total-line">Total <strong id="grandtotal">$0.00</strong></div>
         </div>
         <div class="cart-actions">
-          <button id="clear-cart" class="btn-outline">Vaciar</button>
-          <button id="checkout" class="btn-primary">Pagar</button>
+          <button id="clear-cart" class="btn-ghost">Vaciar</button>
+          <button id="checkout" class="btn-primary">Pagar (Simular Stripe)</button>
+          <button id="export-orders" class="btn-outline">Exportar pedidos (CSV)</button>
           <button id="whatsapp-cart" class="btn-outline">Compartir por WhatsApp</button>
         </div>
       </div>
     </aside>
 
-    <!-- CHAT SIMULADO -->
+    <!-- CHAT WIDGET -->
     <div id="chat-widget" class="chat-widget" aria-hidden="true">
       <div class="chat-header">
         <div>Soporte NOVAFLOW</div>
-        <button id="close-chat" class="icon-btn">✕</button>
+        <button id="close-chat" class="icon-btn" aria-label="Cerrar">✕</button>
       </div>
-      <div id="chat-messages" class="chat-messages"></div>
+      <div id="chat-messages" class="chat-messages" role="log" aria-live="polite"></div>
       <div class="chat-input">
         <input id="chat-text" placeholder="Escribe tu mensaje..." />
         <button id="send-chat" class="btn-primary">Enviar</button>
@@ -209,30 +222,11 @@
     </div>
     <button id="chat-floating" class="chat-floating" title="Abrir chat">💬</button>
 
-    <!-- WHATSAPP QUICK BUTTON (fijo abajo derecha) -->
-    <a id="whatsapp-quick" class="whatsapp-quick" href="#" target="_blank" rel="noopener noreferrer" title="Contactar por WhatsApp">💬 WhatsApp</a>
-
     <!-- TOAST -->
-    <div id="toast-wrap" aria-live="polite"></div>
-
-    <!-- FOOTER -->
-    <footer class="footer">
-      <div>© <span id="year"></span> NOVAFLOW — Todos los derechos reservados</div>
-      <div class="muted small">Política de privacidad · Términos · Contacto</div>
-    </footer>
+    <div id="toast-wrap" class="toast-wrap" aria-live="polite"></div>
   </div>
 
+  <!-- ================= Scripts ================= -->
   <script src="script.js" defer></script>
-
-  <!-- Service worker registration (si tienes service-worker.js) -->
-  <script>
-    if ('serviceWorker' in navigator) {
-      window.addEventListener('load', () => {
-        navigator.serviceWorker.register('service-worker.js').then(reg => {
-          console.log('SW registrado:', reg.scope);
-        }).catch(err => console.warn('Error registrando SW:', err));
-      });
-    }
-  </script>
 </body>
 </html>
