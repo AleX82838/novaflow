@@ -1,14 +1,13 @@
 {
   "name": "NOVAFLOW",
   "short_name": "NOVAFLOW",
-  "description": "Tienda oficial NOVAFLOW — comida, bebidas, ropa y coleccionables.",
+  "description": "Tienda NOVAFLOW — comida, bebidas, ropa y coleccionables.",
   "start_url": "./index.html",
   "scope": "./",
   "display": "standalone",
-  "background_color": "#000000",
-  "theme_color": "#000000",
+  "background_color": "#07030b",
+  "theme_color": "#07030b",
   "orientation": "portrait",
-  "prefer_related_applications": false,
   "icons": [
     {
       "src": "img/icons/icon-192.png",
