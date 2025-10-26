@@ -299,3 +299,68 @@ button{cursor:pointer;border:0}
 @media(min-width:900px){.panel-grid{grid-template-columns:1fr 340px}.products-grid{grid-template-columns:repeat(3,1fr)}}
 @media(min-width:1200px){.products-grid{grid-template-columns:repeat(4,1fr)}}
 @media(max-width:800px){.sidebar{display:none}.main-wrap{margin-left:0}.search-inline input{min-width:100px}.products-grid{grid-template-columns:repeat(2,1fr)}}
+
+
+/* ===== NOVAFLOW - Mobile sidebar & cart support (added) ===== */
+
+/* When JS toggles .sidebar-open on body, show sidebar on small screens */
+body.sidebar-open .sidebar {
+  display: flex !important;
+  position:fixed;
+  left:0;
+  top:0;
+  bottom:0;
+  width: 84%;
+  max-width: 320px;
+  z-index: 999;
+  transform: translateX(0);
+  transition: transform 240ms ease;
+  box-shadow: 0 18px 60px rgba(0,0,0,0.6);
+}
+
+/* slide-in effect */
+.sidebar {
+  transition: transform 260ms cubic-bezier(.2,.9,.2,1), opacity 200ms ease;
+}
+@media (max-width:900px){
+  .sidebar {
+    transform: translateX(-110%);
+  }
+  body.sidebar-open .sidebar { transform: translateX(0); }
+  .main-wrap { transition: filter 220ms ease; }
+  body.sidebar-open .main-wrap { filter: blur(2px) saturate(1.02); pointer-events: none; }
+}
+
+/* cart sidebar adjustments for smaller screens */
+.cart-sidebar {
+  right: 18px;
+  top: 86px;
+  transition: transform 260ms ease, opacity 240ms ease;
+  transform: translateY(0);
+}
+.cart-sidebar.show {
+  transform: translateY(0);
+  opacity: 1;
+}
+
+/* small utility buttons inside cart */
+.btn-small{ padding:6px 8px; border-radius:8px; font-size:13px; }
+.btn-qty{ min-width:32px; min-height:28px; display:inline-flex; align-items:center; justify-content:center; }
+
+/* carousel track smoother scroll */
+.carousel { scroll-behavior: smooth; }
+
+/* modal improvements */
+.modal-inner { transition: transform 260ms cubic-bezier(.2,.9,.2,1), opacity 200ms ease; transform: translateY(6px); }
+.modal.show .modal-inner { transform: translateY(0); }
+
+/* small responsive tweaks for cart on tiny screens */
+@media (max-width:480px){
+  .cart-sidebar { right: 12px; width: 94%; top: 72px; padding:10px; }
+}
+
+/* subtle focus outlines for accessibility */
+button:focus, .chip:focus { outline: 2px solid rgba(139,92,246,0.18); outline-offset:2px; }
+
+/* ensure toast appears above sidebar */
+.toast-wrap { z-index: 1200; }
