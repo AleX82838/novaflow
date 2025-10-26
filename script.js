@@ -1,4 +1,4 @@
-/* NOVAFLOW v3 - script.js (corregido y funcional para intro + UI básica) */
+/* NOVAFLOW v3 - script.js (final, integrando intro con logo/audio y todas las funciones básicas) */
 
 /* ------------- CONFIG & DATA ------------- */
 const EVENT_ISO = '2025-12-26T16:00:00-06:00';
@@ -34,41 +34,23 @@ let reviews = {};
 let favs = {};
 let deferredPrompt = null;
 
-/* ------------- Persistence helpers ------------- */
+/* ------------- Helpers ------------- */
 function load(key, fallback={}){ try{ return JSON.parse(localStorage.getItem(key)) || fallback; }catch(e){ return fallback; } }
 function save(key, val){ localStorage.setItem(key, JSON.stringify(val)); }
-
-/* ------------- Utility functions (creadas si faltaban) ------------- */
-function createElementFromHTML(html){
-  const div = document.createElement('div');
-  div.innerHTML = html.trim();
-  return div.firstChild;
-}
+function createElementFromHTML(html){ const div = document.createElement('div'); div.innerHTML = html.trim(); return div.firstChild; }
 function showToast(message){
-  // simple toast appended to #toast-wrap if present
   const wrap = document.getElementById('toast-wrap');
   if(wrap){
-    const t = document.createElement('div');
-    t.className = 'toast';
-    t.textContent = message;
-    t.style.padding = '8px 12px';
-    t.style.borderRadius = '8px';
-    t.style.background = 'rgba(0,0,0,0.6)';
-    t.style.color = '#fff';
+    const t = document.createElement('div'); t.className = 'toast'; t.textContent = message;
+    t.style.padding = '8px 12px'; t.style.borderRadius = '8px'; t.style.background = 'rgba(0,0,0,0.6)';
+    t.style.color = '#fff'; t.style.backdropFilter = 'blur(6px)';
     wrap.appendChild(t);
-    setTimeout(()=> t.remove(), 2800);
+    setTimeout(()=> t.remove(), 3000);
     return;
   }
-  // fallback
   console.log('TOAST:', message);
 }
-function debounce(fn, delay){
-  let t;
-  return (...args)=>{
-    clearTimeout(t);
-    t = setTimeout(()=> fn(...args), delay);
-  };
-}
+function debounce(fn, delay){ let t; return (...args)=>{ clearTimeout(t); t = setTimeout(()=> fn(...args), delay); }; }
 function fmtMoney(n){ return `$${Number(n).toFixed(2)}`; }
 function capitalize(s){ return String(s).split(' ').map(w=> w[0]?.toUpperCase()+w.slice(1)).join(' '); }
 
@@ -77,8 +59,8 @@ document.addEventListener('DOMContentLoaded', ()=>{
   cart = load(CART_KEY,{});
   reviews = load(REVIEWS_KEY,{});
   favs = load(FAVS_KEY,{});
-  bindUI();           // event handlers
-  initIntro();        // intro first
+  bindUI();
+  initIntro();
   initTheme();
   initClock();
   initCountdown();
@@ -89,93 +71,78 @@ document.addEventListener('DOMContentLoaded', ()=>{
   initModalHandlers();
   initChat();
   initWhatsAppButtons();
+  initInstallPrompt();
   document.getElementById('year').textContent = new Date().getFullYear();
 });
 
-/* ------------- Intro flow & username ------------- */
+/* ------------- Intro flow with logo + audio ------------- */
 function initIntro(){
   const overlay = document.getElementById('intro-overlay');
   const video = document.getElementById('intro-video');
+  const logo = document.getElementById('intro-logo');
   const text = document.getElementById('intro-overlay-text');
+  const audio = document.getElementById('intro-audio');
   const app = document.getElementById('app');
   const username = localStorage.getItem('novaflow_username');
 
-  // safety defaults
-  if(!overlay || !video){ document.body.classList.add('loaded'); return; }
+  if(!overlay || !video){ document.body.classList.add('loaded'); if(app) app.setAttribute('aria-hidden','false'); return; }
 
-  video.controls = false;
-  video.addEventListener('contextmenu', (e)=> e.preventDefault());
-  video.addEventListener('keydown', (e)=> e.preventDefault());
+  // allow user to skip by clicking overlay
+  overlay.addEventListener('click', ()=> {
+    finishIntro(overlay, logo, text, audio, app);
+    // stop video
+    try{ video.pause(); video.currentTime = video.duration; }catch(e){}
+  });
 
-  // If user already saved name, show personalized text when ending
+  // handle video end
   video.addEventListener('ended', ()=>{
-    if(username){
-      text.textContent = `Bienvenido de nuevo, ${username}`;
-    } else {
-      text.textContent = `Bienvenido a NOVAFLOW`;
+    // show a short animated logo
+    if(username) text.textContent = `Bienvenido de nuevo, ${username}`;
+    else text.textContent = `Bienvenido a NOVAFLOW`;
+    // show logo
+    logo.classList.add('show');
+    logo.setAttribute('aria-hidden','false');
+
+    // try to play audio (may be blocked until user interaction)
+    if(audio){
+      audio.currentTime = 0;
+      const playPromise = audio.play();
+      if(playPromise !== undefined){
+        playPromise.catch(()=> {
+          // cannot autoplay sound, OK — user can click to enable later
+        });
+      }
     }
-    // wait a bit so user sees text, then fade
-    setTimeout(()=>{
-      overlay.classList.add('fade-out');
-      setTimeout(()=> {
-        overlay.style.display = 'none';
-        document.body.classList.add('loaded');
-        // if no username, show name prompt
-        if(!username) showNameCapture();
-      }, 1000);
-    }, 900);
+
+    // after a short moment, fade out overlay and show app
+    setTimeout(()=> finishIntro(overlay, logo, text, audio, app), 1400);
   });
 
-  // Fallback: if video errors or doesn't start, remove overlay after timeout
-  video.addEventListener('error', ()=>{
-    overlay.classList.add('fade-out');
-    setTimeout(()=> {
-      overlay.style.display = 'none';
-      document.body.classList.add('loaded');
-      if(!username) showNameCapture();
-    }, 800);
-  });
-
-  // Safety max wait (if browser blocks autoplay or takes too long)
-  setTimeout(()=>{
-    if(!document.body.classList.contains('loaded')){
-      overlay.classList.add('fade-out');
-      setTimeout(()=> {
-        overlay.style.display = 'none';
-        document.body.classList.add('loaded');
-        if(!username) showNameCapture();
-      }, 800);
-    }
-  }, 8000);
+  // fallback if video errors or takes too long
+  video.addEventListener('error', ()=> finishIntro(overlay, logo, text, audio, app));
+  setTimeout(()=> {
+    if(!document.body.classList.contains('loaded')) finishIntro(overlay, logo, text, audio, app);
+  }, 9000);
 }
 
-function showNameCapture(){
-  // simple inline prompt in the welcomeContainer that you already have in HTML
-  const welcome = document.getElementById('welcomeContainer');
-  const input = document.getElementById('usernameInput');
-  const saveBtn = document.getElementById('saveNameBtn');
-  const welcomeMsg = document.getElementById('welcomeMessage');
-
-  if(!welcome || !input || !saveBtn || !welcomeMsg) return;
-
-  welcome.classList.remove('hidden');
-  welcome.setAttribute('aria-hidden','false');
-
-  saveBtn.addEventListener('click', ()=>{
-    const nm = input.value.trim();
-    if(!nm){ showToast('Ingresa tu nombre'); return; }
-    localStorage.setItem('novaflow_username', nm);
-    welcomeMsg.textContent = `¡Bienvenido, ${nm}!`;
-    setTimeout(()=>{
-      welcome.classList.add('hidden');
-      welcome.setAttribute('aria-hidden','true');
-    }, 1600);
-  });
+function finishIntro(overlay, logo, text, audio, app){
+  if(!overlay) return;
+  overlay.classList.add('fade-out');
+  setTimeout(()=> {
+    overlay.style.display = 'none';
+    document.body.classList.add('loaded');
+    if(app) { app.setAttribute('aria-hidden','false'); }
+    // stop audio after short time if playing
+    if(audio){
+      setTimeout(()=> {
+        try{ audio.pause(); }catch(e){}
+      }, 2800);
+    }
+  }, 950);
 }
 
-/* ------------- UI & Navigation binding ------------- */
+/* ------------- UI binding ------------- */
 function bindUI(){
-  // Menu navigation
   document.querySelectorAll('.menu-item').forEach(btn=>{
     btn.addEventListener('click', ()=> {
       const tgt = btn.dataset.target;
@@ -186,34 +153,25 @@ function bindUI(){
     });
   });
 
-  // hamburger collapse
-  const menuCollapse = document.getElementById('menu-collapse');
-  if(menuCollapse) menuCollapse.addEventListener('click', ()=> document.body.classList.toggle('sidebar-collapsed'));
+  document.getElementById('menu-collapse')?.addEventListener('click', ()=> document.body.classList.toggle('sidebar-collapsed'));
 
-  // search
   const search = document.getElementById('search');
-  const searchClear = document.getElementById('search-clear');
-  if(search && searchClear){
-    searchClear.addEventListener('click', ()=> { search.value=''; renderProducts(); });
-    search.addEventListener('input', debounce(()=> renderProducts(), 220));
-  }
+  document.getElementById('search-clear')?.addEventListener('click', ()=> { if(search) search.value=''; renderProducts(); });
+  if(search) search.addEventListener('input', debounce(()=> renderProducts(), 220));
 
-  // save name in welcomeContainer (extra safety)
-  const saveNameBtn = document.getElementById('saveNameBtn');
-  if(saveNameBtn){
-    saveNameBtn.addEventListener('click', ()=> {
-      const nm = document.getElementById('usernameInput').value.trim();
-      if(nm){ localStorage.setItem('novaflow_username', nm); showToast(`¡Bienvenido, ${nm}!`); }
-      else showToast('Ingresa tu nombre');
-    });
-  }
+  document.getElementById('saveNameBtn')?.addEventListener('click', ()=>{
+    const nm = document.getElementById('usernameInput')?.value.trim();
+    if(nm){ localStorage.setItem('novaflow_username', nm); showToast(`¡Bienvenido, ${nm}!`); document.getElementById('welcomeContainer')?.classList.add('hidden'); }
+    else showToast('Ingresa tu nombre');
+  });
+
+  document.getElementById('export-orders')?.addEventListener('click', exportOrdersCSV);
+  document.getElementById('checkout')?.addEventListener('click', simulateCheckout);
 }
 
-/* ------------- THEME ------------- */
+/* ------------- Theme ------------- */
 function initTheme(){
-  const root = document.documentElement;
   const btn = document.getElementById('theme-toggle');
-  // keep data-theme on body if present
   btn?.addEventListener('click', ()=>{
     const cur = document.body.getAttribute('data-theme') === 'dark' ? 'light' : 'dark';
     document.body.setAttribute('data-theme', cur);
@@ -221,22 +179,15 @@ function initTheme(){
   });
 }
 
-/* ------------- CLOCK ------------- */
+/* ------------- Clock ------------- */
 function initClock(){
   const el = document.getElementById('live-clock');
   if(!el) return;
-  function tick(){
-    try {
-      const now = new Date();
-      el.textContent = now.toLocaleString('es-MX', { timeZone: TIMEZONE, hour:'2-digit', minute:'2-digit', second:'2-digit' });
-    } catch(e){
-      el.textContent = new Date().toLocaleTimeString();
-    }
-  }
+  function tick(){ try{ const now = new Date(); el.textContent = now.toLocaleString('es-MX', { timeZone: TIMEZONE, hour:'2-digit', minute:'2-digit', second:'2-digit' }); }catch(e){ el.textContent = new Date().toLocaleTimeString(); } }
   tick(); setInterval(tick,1000);
 }
 
-/* ------------- COUNTDOWN ------------- */
+/* ------------- Countdown ------------- */
 function initCountdown(){
   const target = new Date(EVENT_ISO);
   function update(){
@@ -249,22 +200,19 @@ function initCountdown(){
     const secs = Math.floor((diff / 1000) % 60);
     const big = document.getElementById('countdown-large');
     const small = document.getElementById('countdown-small');
-
-    const tpl = (d,h,m,s)=> {
-      return `
-        <div class="cd-piece"><span>${String(d).padStart(2,'0')}</span><small>DÍAS</small></div>
-        <div class="cd-piece"><span>${String(h).padStart(2,'0')}</span><small>HORAS</small></div>
-        <div class="cd-piece"><span>${String(m).padStart(2,'0')}</span><small>MIN</small></div>
-        <div class="cd-piece"><span>${String(s).padStart(2,'0')}</span><small>SEG</small></div>
-      `;
-    };
+    const tpl = (d,h,m,s)=> `
+      <div class="cd-piece"><span>${String(d).padStart(2,'0')}</span><small>DÍAS</small></div>
+      <div class="cd-piece"><span>${String(h).padStart(2,'0')}</span><small>HORAS</small></div>
+      <div class="cd-piece"><span>${String(m).padStart(2,'0')}</span><small>MIN</small></div>
+      <div class="cd-piece"><span>${String(s).padStart(2,'0')}</span><small>SEG</small></div>
+    `;
     if(big) big.innerHTML = tpl(days,hours,mins,secs);
     if(small) small.innerHTML = tpl(days,hours,mins,secs);
   }
   update(); setInterval(update,1000);
 }
 
-/* ------------- CATEGORY CHIPS & FEATURED PER CATEGORY ------------- */
+/* ------------- Category chips ------------- */
 function initCategoryChips(){
   const container = document.getElementById('category-chips');
   if(!container) return;
@@ -286,7 +234,6 @@ function createChip(key,label,active=false){
   });
   return btn;
 }
-
 function renderCategoryFeatured(category){
   const wrap = document.getElementById('category-featured');
   const title = document.getElementById('category-featured-title');
@@ -314,27 +261,20 @@ function renderCategoryFeatured(category){
   });
 }
 
-/* ------------- RENDER PRODUCTS ------------- */
+/* ------------- Products rendering ------------- */
 function renderProducts(searchQuery = '', category = null){
   const root = document.getElementById('products');
   if(!root) return;
   root.innerHTML = '';
   let list = PRODUCTS.slice();
-
-  // category from active chip if not provided
   const activeChip = document.querySelector('.chip.active');
   if(!category && activeChip && activeChip.dataset.cat !== 'all') category = activeChip.dataset.cat;
   if(category) list = list.filter(p => p.category === category);
 
   const q = (searchQuery || document.getElementById('search')?.value || '').trim().toLowerCase();
-  if(q){
-    list = list.filter(p => (p.title + ' ' + p.desc + ' ' + p.provider).toLowerCase().includes(q));
-  }
+  if(q) list = list.filter(p => (p.title + ' ' + p.desc + ' ' + p.provider).toLowerCase().includes(q));
 
-  if(list.length === 0){
-    root.innerHTML = `<div class="card muted">No se encontraron productos.</div>`;
-    return;
-  }
+  if(list.length === 0){ root.innerHTML = `<div class="card muted">No se encontraron productos.</div>`; return; }
 
   list.forEach(p=>{
     const el = document.createElement('div');
@@ -351,13 +291,12 @@ function renderProducts(searchQuery = '', category = null){
     root.appendChild(el);
   });
 
-  // attach add buttons
   root.querySelectorAll('.btn-add').forEach(b=>{
     b.addEventListener('click', ()=> openProductModal(b.dataset.id));
   });
 }
 
-/* ------------- Product modal (simple) ------------- */
+/* ------------- Product modal ------------- */
 function openProductModal(id){
   const p = PRODUCTS.find(x=> x.id === id);
   if(!p) return;
@@ -380,49 +319,25 @@ function openProductModal(id){
       </div>
     </div>
   `;
-  modal.classList.add('show');
-  modal.setAttribute('aria-hidden','false');
+  modal.classList.add('show'); modal.setAttribute('aria-hidden','false');
 
-  document.getElementById('close-modal').addEventListener('click', ()=> {
-    modal.classList.remove('show');
-    modal.setAttribute('aria-hidden','true');
-  });
-
-  document.getElementById('add-to-cart').addEventListener('click', ()=>{
-    addToCart(p.id, 1);
-    showToast(`${p.title} añadido al carrito`);
-    modal.classList.remove('show');
-    modal.setAttribute('aria-hidden','true');
-  });
+  document.getElementById('close-modal').addEventListener('click', ()=> { modal.classList.remove('show'); modal.setAttribute('aria-hidden','true'); });
+  document.getElementById('add-to-cart').addEventListener('click', ()=> { addToCart(p.id,1); showToast(`${p.title} añadido al carrito`); modal.classList.remove('show'); modal.setAttribute('aria-hidden','true'); });
 }
 
-function initModalHandlers(){
-  const modalClose = document.getElementById('modal-close');
-  modalClose?.addEventListener('click', ()=>{
-    const modal = document.getElementById('product-modal');
-    modal.classList.remove('show');
-    modal.setAttribute('aria-hidden','true');
-  });
-}
+function initModalHandlers(){ document.getElementById('modal-close')?.addEventListener('click', ()=> { const modal = document.getElementById('product-modal'); modal.classList.remove('show'); modal.setAttribute('aria-hidden','true'); }); }
 
-/* ------------- CART ------------- */
+/* ------------- Cart ------------- */
 function initCart(){
   renderCart();
-  document.getElementById('cart-toggle')?.addEventListener('click', ()=> {
-    const cartEl = document.getElementById('cart');
-    cartEl.classList.toggle('show');
-  });
-  document.getElementById('close-cart')?.addEventListener('click', ()=> {
-    document.getElementById('cart')?.classList.remove('show');
-  });
-  document.getElementById('clear-cart')?.addEventListener('click', ()=> {
-    cart = {}; save(CART_KEY, cart); renderCart();
-  });
+  document.getElementById('cart-toggle')?.addEventListener('click', ()=> document.getElementById('cart')?.classList.toggle('show'));
+  document.getElementById('close-cart')?.addEventListener('click', ()=> document.getElementById('cart')?.classList.remove('show'));
+  document.getElementById('clear-cart')?.addEventListener('click', ()=> { cart = {}; save(CART_KEY, cart); renderCart(); showToast('Carrito vaciado'); });
 }
 
 function addToCart(id, qty=1){
-  if(!cart[id]) cart[id] = 0;
-  cart[id] += qty;
+  if(!cart[id]) cart[id]=0;
+  cart[id]+=qty;
   save(CART_KEY, cart);
   renderCart();
 }
@@ -439,10 +354,7 @@ function renderCart(){
     if(!p) return;
     const q = cart[id];
     subtotal += p.price * q;
-    const row = document.createElement('div');
-    row.style.display = 'flex';
-    row.style.justifyContent = 'space-between';
-    row.style.padding = '8px 0';
+    const row = document.createElement('div'); row.style.display='flex'; row.style.justifyContent='space-between'; row.style.padding='8px 0';
     row.innerHTML = `<div>${p.title} x${q}</div><div style="font-weight:800">${fmtMoney(p.price * q)}</div>`;
     itemsWrap.appendChild(row);
   });
@@ -452,7 +364,7 @@ function renderCart(){
   if(cartCount) cartCount.textContent = ids.reduce((s,k)=> s + (cart[k]||0), 0);
 }
 
-/* ------------- FEATURED carousel (simple rendering) ------------- */
+/* ------------- Featured carousel simple ------------- */
 function initFeaturedCarousel(){
   const track = document.getElementById('carousel-track');
   if(!track) return;
@@ -460,17 +372,13 @@ function initFeaturedCarousel(){
   FEATURED_IDS.forEach(id=>{
     const p = PRODUCTS.find(x=> x.id === id);
     if(!p) return;
-    const itm = document.createElement('div');
-    itm.className = 'carousel-item';
-    itm.innerHTML = `
-      <div style="width:100%;height:140px;overflow:hidden;border-radius:8px"><img src="${p.img}" alt="${p.title}" style="width:100%;height:100%;object-fit:cover" onerror="this.style.display='none'"></div>
-      <div style="font-weight:800;margin-left:8px">${p.title}</div>
-    `;
+    const itm = document.createElement('div'); itm.className='carousel-item';
+    itm.innerHTML = `<div style="width:100%;height:140px;overflow:hidden;border-radius:8px"><img src="${p.img}" alt="${p.title}" style="width:100%;height:100%;object-fit:cover" onerror="this.style.display='none'"></div><div style="font-weight:800;margin-left:8px">${p.title}</div>`;
     track.appendChild(itm);
   });
 }
 
-/* ------------- Chat (básico) ------------- */
+/* ------------- Chat ------------- */
 function initChat(){
   const chatFloat = document.getElementById('chat-floating');
   const chatWidget = document.getElementById('chat-widget');
@@ -479,7 +387,6 @@ function initChat(){
   if(chatFloat && chatWidget) chatFloat.addEventListener('click', ()=> chatWidget.classList.toggle('show'));
   if(openChat && chatWidget) openChat.addEventListener('click', ()=> chatWidget.classList.add('show'));
   if(closeChat && chatWidget) closeChat.addEventListener('click', ()=> chatWidget.classList.remove('show'));
-  // send basic message
   document.getElementById('send-chat')?.addEventListener('click', ()=>{
     const input = document.getElementById('chat-text');
     if(!input || !input.value) return;
@@ -487,15 +394,11 @@ function initChat(){
     const m = document.createElement('div'); m.className = 'chat-message user'; m.textContent = input.value;
     messages.appendChild(m);
     input.value = '';
-    setTimeout(()=> {
-      const bot = document.createElement('div'); bot.className = 'chat-message bot'; bot.textContent = 'Gracias por tu mensaje. Pronto te contestaremos.';
-      messages.appendChild(bot);
-      messages.scrollTop = messages.scrollHeight;
-    }, 600);
+    setTimeout(()=> { const bot = document.createElement('div'); bot.className = 'chat-message bot'; bot.textContent = 'Gracias por tu mensaje. Pronto te contestaremos.'; messages.appendChild(bot); messages.scrollTop = messages.scrollHeight; }, 600);
   });
 }
 
-/* ------------- WhatsApp buttons (simple) ------------- */
+/* ------------- WhatsApp buttons ------------- */
 function initWhatsAppButtons(){
   document.getElementById('whatsapp-send-event')?.addEventListener('click', ()=>{
     const url = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent('Hola, quiero info del bazar NOVAFLOW')}`;
@@ -525,10 +428,39 @@ function initInstallPrompt(){
   });
 }
 
-/* ------------- Misc helpers ------------- */
+/* ------------- Export CSV & Checkout simulation ------------- */
+function exportOrdersCSV(){
+  // create CSV of cart
+  const rows = [['Producto','Cantidad','Precio unitario','Total']];
+  Object.keys(cart).forEach(id=>{
+    const p = PRODUCTS.find(x=>x.id===id);
+    if(!p) return;
+    const q = cart[id];
+    rows.push([p.title, q, p.price, (p.price*q).toFixed(2)]);
+  });
+  const csv = rows.map(r=> r.map(cell=> `"${String(cell).replace(/"/g,'""')}"`).join(',')).join('\n');
+  const a = document.createElement('a'); a.href = 'data:text/csv;charset=utf-8,' + encodeURIComponent(csv);
+  a.download = `novaflow_pedido_${new Date().toISOString().slice(0,19).replace(/[:T]/g,'-')}.csv`;
+  document.body.appendChild(a); a.click(); a.remove();
+  showToast('CSV descargado');
+}
+
+function simulateCheckout(){
+  const total = Object.keys(cart).reduce((s,k)=> {
+    const p = PRODUCTS.find(x=> x.id === k);
+    return s + (p ? p.price * cart[k] : 0);
+  }, 0);
+  if(total === 0){ showToast('El carrito está vacío'); return; }
+  // simulate success
+  showToast('Pago simulado exitoso — Pedido creado');
+  // store a fake order in localStorage
+  const orders = load(ORDERS_KEY, []);
+  orders.push({ id: 'order_' + Date.now(), items: cart, total, created: new Date().toISOString() });
+  save(ORDERS_KEY, orders);
+  cart = {}; save(CART_KEY, cart); renderCart();
+}
+
+/* ------------- Misc ------------- */
 function noop(){}
 
-/* ------------- Export (optional) ------------- */
-// Puedes agregar funciones para exportar pedidos, simular pago, etc.
-// Por ahora todo está básico y estable.
-
+/* ------------- End of file ------------- */
