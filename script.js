@@ -7,8 +7,8 @@ const CART_KEY = 'novaflow_cart_v3';
 const REVIEWS_KEY = 'novaflow_reviews_v3';
 const ORDERS_KEY = 'novaflow_orders_v3';
 const FAVS_KEY = 'novaflow_favs_v3';
-// WhatsApp: +52 56 5459 5169 => wa.me/525654595169
-const WHATSAPP_NUMBER = '525654595169';
+// WhatsApp: +52 56 5459 5169 => wa.me/9618801746
+const WHATSAPP_NUMBER = '529618801746';
 const WHATSAPP_MESSAGE_BASE = 'Hola, quiero confirmar un pedido de NOVAFLOW:';
 
 const CATEGORIES = ['snacks','postres','ropa y moda','de coleccion','bebidas','snacks frios'];
