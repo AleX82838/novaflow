@@ -364,3 +364,59 @@ button:focus, .chip:focus { outline: 2px solid rgba(139,92,246,0.18); outline-of
 
 /* ensure toast appears above sidebar */
 .toast-wrap { z-index: 1200; }
+
+
+/* ===== NOVAFLOW - ajustes funcionales añadidos ===== */
+
+/* hidden helper */
+.hidden { display: none !important; }
+
+/* Welcome modal (registro local) */
+.welcome-modal {
+  position: fixed;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 9998;
+  background: linear-gradient(180deg, rgba(2,2,3,0.6), rgba(2,2,3,0.6));
+  padding: 18px;
+}
+.welcome-inner { width: 100%; max-width: 520px; padding: 18px; border-radius: 12px; text-align: left; }
+
+/* mobile sidebar control */
+body.sidebar-open .sidebar {
+  display: flex !important;
+  position: fixed;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 84%;
+  max-width: 320px;
+  z-index: 9999;
+  transform: translateX(0);
+  transition: transform 240ms ease;
+  box-shadow: 0 18px 60px rgba(0,0,0,0.6);
+}
+.sidebar { transition: transform 260ms cubic-bezier(.2,.9,.2,1), opacity 200ms ease; }
+@media (max-width:900px){
+  .sidebar { transform: translateX(-110%); }
+  body.sidebar-open .main-wrap { filter: blur(2px) saturate(1.02); pointer-events: none; }
+}
+
+/* cart small button styles */
+.btn-small{ padding:6px 8px; border-radius:8px; font-size:13px; }
+.btn-qty{ min-width:32px; min-height:28px; display:inline-flex; align-items:center; justify-content:center; }
+
+/* carousel track smoothing */
+.carousel { scroll-behavior: smooth; }
+
+/* modal animation */
+.modal-inner { transition: transform 260ms cubic-bezier(.2,.9,.2,1), opacity 200ms ease; transform: translateY(6px); }
+.modal.show .modal-inner { transform: translateY(0); }
+
+/* toast above everything */
+.toast-wrap { z-index: 1300; }
+
+/* accessibility focus */
+button:focus, .chip:focus { outline: 2px solid rgba(139,92,246,0.18); outline-offset:2px; }
