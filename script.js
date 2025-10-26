@@ -1,4 +1,11 @@
-/* NOVAFLOW v3 - script.js (final, integrando intro con logo/audio y todas las funciones básicas) */
+/* NOVAFLOW v3 - script.js (corregido e interactividad mejorada)
+   - Hamburgesa funcional (responsive)
+   - Compartir ubicación
+   - WhatsApp actualizado
+   - Carrusel destacado auto-scroll
+   - Carrito interactivo (qty buttons, remove)
+   - Mejoras de accesibilidad y handlers
+*/
 
 /* ------------- CONFIG & DATA ------------- */
 const EVENT_ISO = '2025-12-26T16:00:00-06:00';
@@ -7,6 +14,7 @@ const CART_KEY = 'novaflow_cart_v3';
 const REVIEWS_KEY = 'novaflow_reviews_v3';
 const ORDERS_KEY = 'novaflow_orders_v3';
 const FAVS_KEY = 'novaflow_favs_v3';
+// Número actualizado: +52 56 5459 5169 -> wa.me/525654595169
 const WHATSAPP_NUMBER = '525654595169';
 const WHATSAPP_MESSAGE_BASE = 'Hola, quiero consultar sobre un producto de NOVAFLOW.';
 
@@ -38,14 +46,14 @@ let deferredPrompt = null;
 function load(key, fallback={}){ try{ return JSON.parse(localStorage.getItem(key)) || fallback; }catch(e){ return fallback; } }
 function save(key, val){ localStorage.setItem(key, JSON.stringify(val)); }
 function createElementFromHTML(html){ const div = document.createElement('div'); div.innerHTML = html.trim(); return div.firstChild; }
-function showToast(message){
+function showToast(message, timeout = 3000){
   const wrap = document.getElementById('toast-wrap');
   if(wrap){
     const t = document.createElement('div'); t.className = 'toast'; t.textContent = message;
     t.style.padding = '8px 12px'; t.style.borderRadius = '8px'; t.style.background = 'rgba(0,0,0,0.6)';
     t.style.color = '#fff'; t.style.backdropFilter = 'blur(6px)';
     wrap.appendChild(t);
-    setTimeout(()=> t.remove(), 3000);
+    setTimeout(()=> t.remove(), timeout);
     return;
   }
   console.log('TOAST:', message);
@@ -87,38 +95,27 @@ function initIntro(){
 
   if(!overlay || !video){ document.body.classList.add('loaded'); if(app) app.setAttribute('aria-hidden','false'); return; }
 
-  // allow user to skip by clicking overlay
   overlay.addEventListener('click', ()=> {
     finishIntro(overlay, logo, text, audio, app);
-    // stop video
     try{ video.pause(); video.currentTime = video.duration; }catch(e){}
   });
 
-  // handle video end
   video.addEventListener('ended', ()=>{
-    // show a short animated logo
     if(username) text.textContent = `Bienvenido de nuevo, ${username}`;
     else text.textContent = `Bienvenido a NOVAFLOW`;
-    // show logo
-    logo.classList.add('show');
-    logo.setAttribute('aria-hidden','false');
+    logo.classList.add('show'); logo.setAttribute('aria-hidden','false');
 
-    // try to play audio (may be blocked until user interaction)
     if(audio){
       audio.currentTime = 0;
       const playPromise = audio.play();
       if(playPromise !== undefined){
-        playPromise.catch(()=> {
-          // cannot autoplay sound, OK — user can click to enable later
-        });
+        playPromise.catch(()=>{ /* autoplay blocked */ });
       }
     }
 
-    // after a short moment, fade out overlay and show app
     setTimeout(()=> finishIntro(overlay, logo, text, audio, app), 1400);
   });
 
-  // fallback if video errors or takes too long
   video.addEventListener('error', ()=> finishIntro(overlay, logo, text, audio, app));
   setTimeout(()=> {
     if(!document.body.classList.contains('loaded')) finishIntro(overlay, logo, text, audio, app);
@@ -132,28 +129,47 @@ function finishIntro(overlay, logo, text, audio, app){
     overlay.style.display = 'none';
     document.body.classList.add('loaded');
     if(app) { app.setAttribute('aria-hidden','false'); }
-    // stop audio after short time if playing
     if(audio){
-      setTimeout(()=> {
-        try{ audio.pause(); }catch(e){}
-      }, 2800);
+      setTimeout(()=> { try{ audio.pause(); }catch(e){} }, 2800);
     }
   }, 950);
 }
 
 /* ------------- UI binding ------------- */
 function bindUI(){
+  // Menu items -> panels
   document.querySelectorAll('.menu-item').forEach(btn=>{
     btn.addEventListener('click', ()=> {
       const tgt = btn.dataset.target;
       document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
       const el = document.getElementById(tgt);
       if(el) el.classList.add('active');
+      // close sidebar on small screens when selecting
+      if(window.innerWidth <= 900) document.body.classList.remove('sidebar-open');
       window.scrollTo({top:0,behavior:'smooth'});
     });
   });
 
-  document.getElementById('menu-collapse')?.addEventListener('click', ()=> document.body.classList.toggle('sidebar-collapsed'));
+  // Hamburger behavior (mobile & desktop toggle)
+  const menuCollapse = document.getElementById('menu-collapse');
+  menuCollapse?.addEventListener('click', ()=> {
+    const body = document.body;
+    // toggles a class that CSS can use to show/hide sidebar in mobile
+    body.classList.toggle('sidebar-open');
+    const expanded = body.classList.contains('sidebar-open');
+    menuCollapse.setAttribute('aria-expanded', String(expanded));
+  });
+
+  // Close sidebar when clicking outside (mobile)
+  document.addEventListener('click', (e)=>{
+    const body = document.body;
+    if(!body.classList.contains('sidebar-open')) return;
+    const sidebar = document.querySelector('.sidebar');
+    const target = e.target;
+    if(sidebar && !sidebar.contains(target) && !document.getElementById('menu-collapse')?.contains(target)){
+      body.classList.remove('sidebar-open');
+    }
+  });
 
   const search = document.getElementById('search');
   document.getElementById('search-clear')?.addEventListener('click', ()=> { if(search) search.value=''; renderProducts(); });
@@ -167,6 +183,9 @@ function bindUI(){
 
   document.getElementById('export-orders')?.addEventListener('click', exportOrdersCSV);
   document.getElementById('checkout')?.addEventListener('click', simulateCheckout);
+
+  // share location button
+  document.getElementById('share-location-btn')?.addEventListener('click', shareLocation);
 }
 
 /* ------------- Theme ------------- */
@@ -321,16 +340,43 @@ function openProductModal(id){
   `;
   modal.classList.add('show'); modal.setAttribute('aria-hidden','false');
 
-  document.getElementById('close-modal').addEventListener('click', ()=> { modal.classList.remove('show'); modal.setAttribute('aria-hidden','true'); });
-  document.getElementById('add-to-cart').addEventListener('click', ()=> { addToCart(p.id,1); showToast(`${p.title} añadido al carrito`); modal.classList.remove('show'); modal.setAttribute('aria-hidden','true'); });
+  // close handlers
+  document.getElementById('close-modal')?.addEventListener('click', closeProductModal);
+  document.getElementById('add-to-cart')?.addEventListener('click', ()=> {
+    addToCart(p.id,1);
+    animateCartButton();
+    showToast(`${p.title} añadido al carrito`);
+    closeProductModal();
+  });
+
+  // allow Esc key to close modal
+  const escHandler = (e)=> { if(e.key === 'Escape') closeProductModal(); };
+  document.addEventListener('keydown', escHandler, { once: true });
+  // remove modal when clicking outside inner
+  modal.addEventListener('click', function onOutClick(ev){
+    if(ev.target === modal){ closeProductModal(); modal.removeEventListener('click', onOutClick); }
+  });
+}
+function closeProductModal(){
+  const modal = document.getElementById('product-modal');
+  if(!modal) return;
+  modal.classList.remove('show'); modal.setAttribute('aria-hidden','true');
 }
 
-function initModalHandlers(){ document.getElementById('modal-close')?.addEventListener('click', ()=> { const modal = document.getElementById('product-modal'); modal.classList.remove('show'); modal.setAttribute('aria-hidden','true'); }); }
+/* ------------- Modal basic handlers ------------- */
+function initModalHandlers(){
+  document.getElementById('modal-close')?.addEventListener('click', ()=> { const modal = document.getElementById('product-modal'); if(modal){ modal.classList.remove('show'); modal.setAttribute('aria-hidden','true'); } });
+  // Esc close for global modals
+  document.addEventListener('keydown', (e)=> { if(e.key === 'Escape'){ document.querySelectorAll('.modal.show').forEach(m=> { m.classList.remove('show'); m.setAttribute('aria-hidden','true'); }); }});
+}
 
 /* ------------- Cart ------------- */
 function initCart(){
   renderCart();
-  document.getElementById('cart-toggle')?.addEventListener('click', ()=> document.getElementById('cart')?.classList.toggle('show'));
+  document.getElementById('cart-toggle')?.addEventListener('click', ()=> {
+    const cartEl = document.getElementById('cart');
+    if(cartEl) cartEl.classList.toggle('show');
+  });
   document.getElementById('close-cart')?.addEventListener('click', ()=> document.getElementById('cart')?.classList.remove('show'));
   document.getElementById('clear-cart')?.addEventListener('click', ()=> { cart = {}; save(CART_KEY, cart); renderCart(); showToast('Carrito vaciado'); });
 }
@@ -338,6 +384,19 @@ function initCart(){
 function addToCart(id, qty=1){
   if(!cart[id]) cart[id]=0;
   cart[id]+=qty;
+  if(cart[id] <= 0) delete cart[id];
+  save(CART_KEY, cart);
+  renderCart();
+}
+
+function setCartItemQty(id, qty){
+  if(qty <= 0){ delete cart[id]; } else { cart[id] = qty; }
+  save(CART_KEY, cart);
+  renderCart();
+}
+
+function removeCartItem(id){
+  delete cart[id];
   save(CART_KEY, cart);
   renderCart();
 }
@@ -349,22 +408,72 @@ function renderCart(){
   itemsWrap.innerHTML = '';
   let subtotal = 0;
   const ids = Object.keys(cart);
+  if(ids.length === 0){
+    itemsWrap.innerHTML = `<div class="muted small" style="padding:8px">No hay artículos en el carrito.</div>`;
+  }
   ids.forEach(id=>{
     const p = PRODUCTS.find(x=> x.id === id);
     if(!p) return;
     const q = cart[id];
     subtotal += p.price * q;
-    const row = document.createElement('div'); row.style.display='flex'; row.style.justifyContent='space-between'; row.style.padding='8px 0';
-    row.innerHTML = `<div>${p.title} x${q}</div><div style="font-weight:800">${fmtMoney(p.price * q)}</div>`;
+
+    // item row with qty controls and remove
+    const row = document.createElement('div');
+    row.className = 'cart-row';
+    row.style.display='flex';
+    row.style.justifyContent='space-between';
+    row.style.alignItems='center';
+    row.style.padding='8px 0';
+    row.innerHTML = `
+      <div style="flex:1;min-width:0">
+        <div style="font-weight:800">${p.title}</div>
+        <div class="muted small">${p.provider}</div>
+      </div>
+      <div style="display:flex;flex-direction:column;align-items:flex-end;gap:6px;min-width:110px">
+        <div style="font-weight:800">${fmtMoney(p.price * q)}</div>
+        <div style="display:flex;gap:6px;align-items:center">
+          <button class="btn-qty btn-small" data-action="dec" data-id="${id}">−</button>
+          <div style="min-width:28px;text-align:center">${q}</div>
+          <button class="btn-qty btn-small" data-action="inc" data-id="${id}">+</button>
+          <button class="btn-small btn-outline" data-action="remove" data-id="${id}" title="Eliminar">🗑</button>
+        </div>
+      </div>
+    `;
     itemsWrap.appendChild(row);
   });
+
+  // attach qty handlers
+  itemsWrap.querySelectorAll('.btn-qty').forEach(b=>{
+    b.addEventListener('click', (e)=>{
+      const id = b.dataset.id;
+      const action = b.dataset.action;
+      const current = cart[id] || 0;
+      if(action === 'inc') setCartItemQty(id, current + 1);
+      else if(action === 'dec') setCartItemQty(id, current - 1);
+    });
+  });
+  itemsWrap.querySelectorAll('[data-action="remove"]').forEach(b=>{
+    b.addEventListener('click', ()=> { removeCartItem(b.dataset.id); showToast('Artículo eliminado'); });
+  });
+
   document.getElementById('subtotal') && (document.getElementById('subtotal').textContent = fmtMoney(subtotal));
   document.getElementById('shipping') && (document.getElementById('shipping').textContent = fmtMoney(0));
   document.getElementById('grandtotal') && (document.getElementById('grandtotal').textContent = fmtMoney(subtotal));
   if(cartCount) cartCount.textContent = ids.reduce((s,k)=> s + (cart[k]||0), 0);
 }
 
-/* ------------- Featured carousel simple ------------- */
+/* ------------- simple cart button animation (pulse) ------------- */
+function animateCartButton(){
+  const btn = document.getElementById('cart-toggle');
+  if(!btn) return;
+  btn.animate([
+    { transform: 'scale(1)' },
+    { transform: 'scale(1.06)' },
+    { transform: 'scale(1)' }
+  ], { duration: 400, easing: 'ease-out' });
+}
+
+/* ------------- Featured carousel auto-scroll ------------- */
 function initFeaturedCarousel(){
   const track = document.getElementById('carousel-track');
   if(!track) return;
@@ -376,6 +485,31 @@ function initFeaturedCarousel(){
     itm.innerHTML = `<div style="width:100%;height:140px;overflow:hidden;border-radius:8px"><img src="${p.img}" alt="${p.title}" style="width:100%;height:100%;object-fit:cover" onerror="this.style.display='none'"></div><div style="font-weight:800;margin-left:8px">${p.title}</div>`;
     track.appendChild(itm);
   });
+
+  // Auto-scroll implementation (infinite-like)
+  let rafId = null;
+  let lastTime = performance.now();
+  const speed = 0.5; // pixels per frame-normalized
+
+  function step(now){
+    const elapsed = now - lastTime;
+    lastTime = now;
+    track.scrollLeft += speed * (elapsed / 16);
+    if(track.scrollLeft >= (track.scrollWidth - track.clientWidth - 1)){
+      track.scrollLeft = 0;
+    }
+    rafId = requestAnimationFrame(step);
+  }
+
+  function startAuto(){ if(!rafId) { lastTime = performance.now(); rafId = requestAnimationFrame(step); } }
+  function stopAuto(){ if(rafId){ cancelAnimationFrame(rafId); rafId = null; } }
+
+  track.addEventListener('mouseenter', stopAuto);
+  track.addEventListener('mouseleave', startAuto);
+  track.addEventListener('focusin', stopAuto);
+  track.addEventListener('focusout', startAuto);
+
+  startAuto();
 }
 
 /* ------------- Chat ------------- */
@@ -393,6 +527,7 @@ function initChat(){
     const messages = document.getElementById('chat-messages');
     const m = document.createElement('div'); m.className = 'chat-message user'; m.textContent = input.value;
     messages.appendChild(m);
+    messages.scrollTop = messages.scrollHeight;
     input.value = '';
     setTimeout(()=> { const bot = document.createElement('div'); bot.className = 'chat-message bot'; bot.textContent = 'Gracias por tu mensaje. Pronto te contestaremos.'; messages.appendChild(bot); messages.scrollTop = messages.scrollHeight; }, 600);
   });
@@ -408,10 +543,38 @@ function initWhatsAppButtons(){
     const items = Object.keys(cart).map(id=>{
       const p = PRODUCTS.find(x=>x.id===id);
       return p ? `${p.title} x${cart[id]}` : '';
-    }).join(', ');
-    const url = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(WHATSAPP_MESSAGE_BASE + ' Pedido: ' + items)}`;
+    }).filter(Boolean).join(', ');
+    const url = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(WHATSAPP_MESSAGE_BASE + ' Pedido: ' + (items || 'sin artículos'))}`;
     window.open(url,'_blank');
   });
+}
+
+/* ------------- Share location (uses geolocation + Web Share / WhatsApp fallback) ------------- */
+function shareLocation(){
+  if(!navigator.geolocation){
+    showToast('Geolocalización no soportada por tu navegador');
+    return;
+  }
+  showToast('Obteniendo ubicación…');
+  navigator.geolocation.getCurrentPosition(async (pos)=>{
+    const { latitude, longitude } = pos.coords;
+    const mapsLink = `https://www.google.com/maps/search/?api=1&query=${latitude},${longitude}`;
+    if(navigator.share){
+      try{
+        await navigator.share({ title: 'Mi ubicación - NOVAFLOW', text: 'Estoy aquí:', url: mapsLink });
+        showToast('Ubicación compartida');
+        return;
+      }catch(e){ /* fallback */ }
+    }
+    const text = `Hola, comparto mi ubicación: ${mapsLink}`;
+    const url = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(text)}`;
+    window.open(url, '_blank');
+    showToast('Enviando ubicación por WhatsApp');
+  }, (err)=>{
+    console.warn('Geolocation error:', err);
+    if(err.code === 1) showToast('Permiso de ubicación denegado');
+    else showToast('No se pudo obtener ubicación');
+  }, { enableHighAccuracy:true, timeout:10000, maximumAge:60000 });
 }
 
 /* ------------- Install prompt stub (PWA) ------------- */
@@ -430,7 +593,6 @@ function initInstallPrompt(){
 
 /* ------------- Export CSV & Checkout simulation ------------- */
 function exportOrdersCSV(){
-  // create CSV of cart
   const rows = [['Producto','Cantidad','Precio unitario','Total']];
   Object.keys(cart).forEach(id=>{
     const p = PRODUCTS.find(x=>x.id===id);
@@ -451,9 +613,7 @@ function simulateCheckout(){
     return s + (p ? p.price * cart[k] : 0);
   }, 0);
   if(total === 0){ showToast('El carrito está vacío'); return; }
-  // simulate success
   showToast('Pago simulado exitoso — Pedido creado');
-  // store a fake order in localStorage
   const orders = load(ORDERS_KEY, []);
   orders.push({ id: 'order_' + Date.now(), items: cart, total, created: new Date().toISOString() });
   save(ORDERS_KEY, orders);
