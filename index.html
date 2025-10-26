@@ -32,14 +32,17 @@
 
   <!-- ================= Contenido principal ================= -->
   <div id="app" aria-hidden="true">
-    <!-- ================= Mensaje Bienvenida (opcional) ================= -->
-    <div id="welcomeContainer" class="hidden" aria-hidden="true">
-      <div id="nameInputContainer">
-        <p>¡Bienvenido! Ingresa tu nombre:</p>
-        <input type="text" id="usernameInput" placeholder="Tu nombre" />
-        <button id="saveNameBtn">Guardar</button>
+    <!-- ================= Mensaje Bienvenida (modal local) ================= -->
+    <div id="welcomeContainer" class="welcome-modal hidden" aria-hidden="true">
+      <div class="welcome-inner card">
+        <h3>¡Bienvenido a NOVAFLOW!</h3>
+        <p>Ingresa tu nombre para comenzar:</p>
+        <div style="display:flex;gap:8px;align-items:center">
+          <input type="text" id="usernameInput" placeholder="Tu nombre" aria-label="Nombre de usuario" />
+          <button id="saveNameBtn" class="btn-primary">Guardar</button>
+        </div>
+        <div style="margin-top:10px" class="muted small">Tu nombre se guarda localmente en este dispositivo.</div>
       </div>
-      <h1 id="welcomeMessage"></h1>
     </div>
 
     <!-- ================= Sidebar / Menú ================= -->
@@ -72,7 +75,7 @@
     <!-- ================= Main Wrap ================= -->
     <div class="main-wrap">
       <header class="topbar">
-        <button id="menu-collapse" class="hamburger" aria-label="Contraer menú">☰</button>
+        <button id="menu-collapse" class="hamburger" aria-label="Contraer menú" aria-expanded="false">☰</button>
         <div class="search-inline">
           <input id="search" type="search" placeholder="Buscar productos…" aria-label="Buscar productos" />
           <button id="search-clear" class="icon-btn" title="Limpiar búsqueda">✕</button>
@@ -207,7 +210,7 @@
         </div>
         <div class="cart-actions">
           <button id="clear-cart" class="btn-ghost">Vaciar</button>
-          <button id="checkout" class="btn-primary">Pagar (Simular Stripe)</button>
+          <button id="checkout" class="btn-primary">Confirmar pedido (WhatsApp)</button>
           <button id="export-orders" class="btn-outline">Exportar pedidos (CSV)</button>
           <button id="whatsapp-cart" class="btn-outline">Compartir por WhatsApp</button>
         </div>
