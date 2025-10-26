@@ -1,11 +1,4 @@
-/* NOVAFLOW v3 - script.js (corregido e interactividad mejorada)
-   - Hamburgesa funcional (responsive)
-   - Compartir ubicación
-   - WhatsApp actualizado
-   - Carrusel destacado auto-scroll
-   - Carrito interactivo (qty buttons, remove)
-   - Mejoras de accesibilidad y handlers
-*/
+/* NOVAFLOW v3 - script.js (final, sin simulaciones; flujo real por WhatsApp; registro local de usuario) */
 
 /* ------------- CONFIG & DATA ------------- */
 const EVENT_ISO = '2025-12-26T16:00:00-06:00';
@@ -14,9 +7,9 @@ const CART_KEY = 'novaflow_cart_v3';
 const REVIEWS_KEY = 'novaflow_reviews_v3';
 const ORDERS_KEY = 'novaflow_orders_v3';
 const FAVS_KEY = 'novaflow_favs_v3';
-// Número actualizado: +52 56 5459 5169 -> wa.me/525654595169
+// WhatsApp: +52 56 5459 5169 => wa.me/525654595169
 const WHATSAPP_NUMBER = '525654595169';
-const WHATSAPP_MESSAGE_BASE = 'Hola, quiero consultar sobre un producto de NOVAFLOW.';
+const WHATSAPP_MESSAGE_BASE = 'Hola, quiero confirmar un pedido de NOVAFLOW:';
 
 const CATEGORIES = ['snacks','postres','ropa y moda','de coleccion','bebidas','snacks frios'];
 
@@ -81,7 +74,33 @@ document.addEventListener('DOMContentLoaded', ()=>{
   initWhatsAppButtons();
   initInstallPrompt();
   document.getElementById('year').textContent = new Date().getFullYear();
+
+  // Show welcome modal if no username saved
+  const username = localStorage.getItem('novaflow_username');
+  if(!username){
+    showWelcomeModal();
+  } else {
+    // Ensure the intro text will include the username (intro handler will pick it up)
+    // Also show a subtle toast greeting on app visible
+    showToast(`Bienvenido de nuevo, ${username}`, 2500);
+  }
 });
+
+/* ------------- Welcome modal (local registration) ------------- */
+function showWelcomeModal(){
+  const container = document.getElementById('welcomeContainer');
+  if(!container) return;
+  container.classList.remove('hidden');
+  container.setAttribute('aria-hidden','false');
+  // focus input
+  setTimeout(()=> document.getElementById('usernameInput')?.focus(), 120);
+}
+function hideWelcomeModal(){
+  const container = document.getElementById('welcomeContainer');
+  if(!container) return;
+  container.classList.add('hidden');
+  container.setAttribute('aria-hidden','true');
+}
 
 /* ------------- Intro flow with logo + audio ------------- */
 function initIntro(){
@@ -95,27 +114,35 @@ function initIntro(){
 
   if(!overlay || !video){ document.body.classList.add('loaded'); if(app) app.setAttribute('aria-hidden','false'); return; }
 
+  // show username if exists
+  if(username){
+    text.textContent = `Bienvenido de nuevo, ${username}`;
+  } else {
+    text.textContent = `Bienvenido a NOVAFLOW`;
+  }
+
+  // allow user to skip by clicking overlay
   overlay.addEventListener('click', ()=> {
     finishIntro(overlay, logo, text, audio, app);
     try{ video.pause(); video.currentTime = video.duration; }catch(e){}
   });
 
+  // handle video end
   video.addEventListener('ended', ()=>{
-    if(username) text.textContent = `Bienvenido de nuevo, ${username}`;
-    else text.textContent = `Bienvenido a NOVAFLOW`;
-    logo.classList.add('show'); logo.setAttribute('aria-hidden','false');
+    logo.classList.add('show');
+    logo.setAttribute('aria-hidden','false');
 
+    // try to play audio
     if(audio){
       audio.currentTime = 0;
       const playPromise = audio.play();
-      if(playPromise !== undefined){
-        playPromise.catch(()=>{ /* autoplay blocked */ });
-      }
+      if(playPromise !== undefined) playPromise.catch(()=>{ /* autoplay blocked */ });
     }
 
-    setTimeout(()=> finishIntro(overlay, logo, text, audio, app), 1400);
+    setTimeout(()=> finishIntro(overlay, logo, text, audio, app), 1200);
   });
 
+  // fallback if video errors or takes too long
   video.addEventListener('error', ()=> finishIntro(overlay, logo, text, audio, app));
   setTimeout(()=> {
     if(!document.body.classList.contains('loaded')) finishIntro(overlay, logo, text, audio, app);
@@ -128,7 +155,12 @@ function finishIntro(overlay, logo, text, audio, app){
   setTimeout(()=> {
     overlay.style.display = 'none';
     document.body.classList.add('loaded');
-    if(app) { app.setAttribute('aria-hidden','false'); }
+    if(app) app.setAttribute('aria-hidden','false');
+
+    // After intro finishes, if user hasn't set a name, ensure welcome modal is visible
+    const username = localStorage.getItem('novaflow_username');
+    if(!username) showWelcomeModal();
+
     if(audio){
       setTimeout(()=> { try{ audio.pause(); }catch(e){} }, 2800);
     }
@@ -137,36 +169,30 @@ function finishIntro(overlay, logo, text, audio, app){
 
 /* ------------- UI binding ------------- */
 function bindUI(){
-  // Menu items -> panels
   document.querySelectorAll('.menu-item').forEach(btn=>{
     btn.addEventListener('click', ()=> {
       const tgt = btn.dataset.target;
       document.querySelectorAll('.panel').forEach(p=>p.classList.remove('active'));
       const el = document.getElementById(tgt);
       if(el) el.classList.add('active');
-      // close sidebar on small screens when selecting
       if(window.innerWidth <= 900) document.body.classList.remove('sidebar-open');
       window.scrollTo({top:0,behavior:'smooth'});
     });
   });
 
-  // Hamburger behavior (mobile & desktop toggle)
-  const menuCollapse = document.getElementById('menu-collapse');
-  menuCollapse?.addEventListener('click', ()=> {
+  document.getElementById('menu-collapse')?.addEventListener('click', ()=> {
     const body = document.body;
-    // toggles a class that CSS can use to show/hide sidebar in mobile
     body.classList.toggle('sidebar-open');
     const expanded = body.classList.contains('sidebar-open');
-    menuCollapse.setAttribute('aria-expanded', String(expanded));
+    document.getElementById('menu-collapse')?.setAttribute('aria-expanded', String(expanded));
   });
 
-  // Close sidebar when clicking outside (mobile)
+  // close sidebar when clicking outside
   document.addEventListener('click', (e)=>{
     const body = document.body;
     if(!body.classList.contains('sidebar-open')) return;
     const sidebar = document.querySelector('.sidebar');
-    const target = e.target;
-    if(sidebar && !sidebar.contains(target) && !document.getElementById('menu-collapse')?.contains(target)){
+    if(sidebar && !sidebar.contains(e.target) && !document.getElementById('menu-collapse')?.contains(e.target)){
       body.classList.remove('sidebar-open');
     }
   });
@@ -177,15 +203,20 @@ function bindUI(){
 
   document.getElementById('saveNameBtn')?.addEventListener('click', ()=>{
     const nm = document.getElementById('usernameInput')?.value.trim();
-    if(nm){ localStorage.setItem('novaflow_username', nm); showToast(`¡Bienvenido, ${nm}!`); document.getElementById('welcomeContainer')?.classList.add('hidden'); }
-    else showToast('Ingresa tu nombre');
+    if(nm){
+      localStorage.setItem('novaflow_username', nm);
+      hideWelcomeModal();
+      showToast(`¡Bienvenido, ${nm}!`);
+      // update intro overlay text (in case user sets name while intro hasn't finished)
+      const introText = document.getElementById('intro-overlay-text');
+      if(introText) introText.textContent = `Bienvenido de nuevo, ${nm}`;
+    } else {
+      showToast('Ingresa tu nombre');
+    }
   });
 
   document.getElementById('export-orders')?.addEventListener('click', exportOrdersCSV);
-  document.getElementById('checkout')?.addEventListener('click', simulateCheckout);
-
-  // share location button
-  document.getElementById('share-location-btn')?.addEventListener('click', shareLocation);
+  document.getElementById('checkout')?.addEventListener('click', confirmCheckout);
 }
 
 /* ------------- Theme ------------- */
@@ -340,7 +371,6 @@ function openProductModal(id){
   `;
   modal.classList.add('show'); modal.setAttribute('aria-hidden','false');
 
-  // close handlers
   document.getElementById('close-modal')?.addEventListener('click', closeProductModal);
   document.getElementById('add-to-cart')?.addEventListener('click', ()=> {
     addToCart(p.id,1);
@@ -349,10 +379,7 @@ function openProductModal(id){
     closeProductModal();
   });
 
-  // allow Esc key to close modal
-  const escHandler = (e)=> { if(e.key === 'Escape') closeProductModal(); };
-  document.addEventListener('keydown', escHandler, { once: true });
-  // remove modal when clicking outside inner
+  // close by clicking outside
   modal.addEventListener('click', function onOutClick(ev){
     if(ev.target === modal){ closeProductModal(); modal.removeEventListener('click', onOutClick); }
   });
@@ -363,10 +390,9 @@ function closeProductModal(){
   modal.classList.remove('show'); modal.setAttribute('aria-hidden','true');
 }
 
-/* ------------- Modal basic handlers ------------- */
+/* ------------- Modal handlers ------------- */
 function initModalHandlers(){
   document.getElementById('modal-close')?.addEventListener('click', ()=> { const modal = document.getElementById('product-modal'); if(modal){ modal.classList.remove('show'); modal.setAttribute('aria-hidden','true'); } });
-  // Esc close for global modals
   document.addEventListener('keydown', (e)=> { if(e.key === 'Escape'){ document.querySelectorAll('.modal.show').forEach(m=> { m.classList.remove('show'); m.setAttribute('aria-hidden','true'); }); }});
 }
 
@@ -417,7 +443,6 @@ function renderCart(){
     const q = cart[id];
     subtotal += p.price * q;
 
-    // item row with qty controls and remove
     const row = document.createElement('div');
     row.className = 'cart-row';
     row.style.display='flex';
@@ -462,7 +487,7 @@ function renderCart(){
   if(cartCount) cartCount.textContent = ids.reduce((s,k)=> s + (cart[k]||0), 0);
 }
 
-/* ------------- simple cart button animation (pulse) ------------- */
+/* ------------- Cart button animation (pulse) ------------- */
 function animateCartButton(){
   const btn = document.getElementById('cart-toggle');
   if(!btn) return;
@@ -486,10 +511,10 @@ function initFeaturedCarousel(){
     track.appendChild(itm);
   });
 
-  // Auto-scroll implementation (infinite-like)
+  // Auto-scroll
   let rafId = null;
   let lastTime = performance.now();
-  const speed = 0.5; // pixels per frame-normalized
+  const speed = 0.5;
 
   function step(now){
     const elapsed = now - lastTime;
@@ -526,8 +551,7 @@ function initChat(){
     if(!input || !input.value) return;
     const messages = document.getElementById('chat-messages');
     const m = document.createElement('div'); m.className = 'chat-message user'; m.textContent = input.value;
-    messages.appendChild(m);
-    messages.scrollTop = messages.scrollHeight;
+    messages.appendChild(m); messages.scrollTop = messages.scrollHeight;
     input.value = '';
     setTimeout(()=> { const bot = document.createElement('div'); bot.className = 'chat-message bot'; bot.textContent = 'Gracias por tu mensaje. Pronto te contestaremos.'; messages.appendChild(bot); messages.scrollTop = messages.scrollHeight; }, 600);
   });
@@ -549,7 +573,7 @@ function initWhatsAppButtons(){
   });
 }
 
-/* ------------- Share location (uses geolocation + Web Share / WhatsApp fallback) ------------- */
+/* ------------- Share location (geolocation + fallback to WA) ------------- */
 function shareLocation(){
   if(!navigator.geolocation){
     showToast('Geolocalización no soportada por tu navegador');
@@ -560,11 +584,7 @@ function shareLocation(){
     const { latitude, longitude } = pos.coords;
     const mapsLink = `https://www.google.com/maps/search/?api=1&query=${latitude},${longitude}`;
     if(navigator.share){
-      try{
-        await navigator.share({ title: 'Mi ubicación - NOVAFLOW', text: 'Estoy aquí:', url: mapsLink });
-        showToast('Ubicación compartida');
-        return;
-      }catch(e){ /* fallback */ }
+      try{ await navigator.share({ title: 'Mi ubicación - NOVAFLOW', text: 'Estoy aquí:', url: mapsLink }); showToast('Ubicación compartida'); return; }catch(e){}
     }
     const text = `Hola, comparto mi ubicación: ${mapsLink}`;
     const url = `https://wa.me/${WHATSAPP_NUMBER}?text=${encodeURIComponent(text)}`;
@@ -577,7 +597,7 @@ function shareLocation(){
   }, { enableHighAccuracy:true, timeout:10000, maximumAge:60000 });
 }
 
-/* ------------- Install prompt stub (PWA) ------------- */
+/* ------------- Install prompt (PWA) ------------- */
 function initInstallPrompt(){
   window.addEventListener('beforeinstallprompt', (e)=>{
     deferredPrompt = e;
@@ -591,7 +611,7 @@ function initInstallPrompt(){
   });
 }
 
-/* ------------- Export CSV & Checkout simulation ------------- */
+/* ------------- Export CSV & Checkout (real flow via WhatsApp) ------------- */
 function exportOrdersCSV(){
   const rows = [['Producto','Cantidad','Precio unitario','Total']];
   Object.keys(cart).forEach(id=>{
@@ -607,20 +627,48 @@ function exportOrdersCSV(){
   showToast('CSV descargado');
 }
 
-function simulateCheckout(){
-  const total = Object.keys(cart).reduce((s,k)=> {
+/* ------------- Confirm checkout: create order record locally + open WhatsApp with full details ------------- */
+function confirmCheckout(){
+  const ids = Object.keys(cart);
+  if(ids.length === 0){ showToast('El carrito está vacío'); return; }
+
+  const username = localStorage.getItem('novaflow_username') || 'Cliente';
+  const itemsText = ids.map(id=>{
+    const p = PRODUCTS.find(x=>x.id===id);
+    return p ? `${p.title} x${cart[id]} = ${fmtMoney(p.price*cart[id])}` : '';
+  }).filter(Boolean).join('\n');
+
+  const subtotal = ids.reduce((s,k)=> {
     const p = PRODUCTS.find(x=> x.id === k);
     return s + (p ? p.price * cart[k] : 0);
   }, 0);
-  if(total === 0){ showToast('El carrito está vacío'); return; }
-  showToast('Pago simulado exitoso — Pedido creado');
+
+  const order = {
+    id: 'order_' + Date.now(),
+    user: username,
+    items: cart,
+    total: subtotal,
+    created: new Date().toISOString()
+  };
+
+  // Save order locally (you can integrate with backend later)
   const orders = load(ORDERS_KEY, []);
-  orders.push({ id: 'order_' + Date.now(), items: cart, total, created: new Date().toISOString() });
+  orders.push(order);
   save(ORDERS_KEY, orders);
+
+  // prepare WhatsApp message
+  const message = `${WHATSAPP_MESSAGE_BASE}%0ACliente: ${encodeURIComponent(username)}%0A%0A` +
+    `${encodeURIComponent(itemsText)}%0A%0ATotal: ${encodeURIComponent(fmtMoney(subtotal))}%0A%0A` +
+    `ID pedido: ${order.id}`;
+
+  // Open WhatsApp with message
+  const url = `https://wa.me/${WHATSAPP_NUMBER}?text=${message}`;
+  window.open(url,'_blank');
+
+  // clear cart
   cart = {}; save(CART_KEY, cart); renderCart();
+  showToast('Pedido enviado por WhatsApp. Gracias.');
 }
 
 /* ------------- Misc ------------- */
 function noop(){}
-
-/* ------------- End of file ------------- */
