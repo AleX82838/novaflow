@@ -4,24 +4,34 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <title>NOVAFLOW — Mercado & Bazar (v3)</title>
-  <meta name="theme-color" content="#07030b">
-  <link rel="manifest" href="manifest.json">
-  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&family=Poppins:wght@300;400;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="style.css">
+  <meta name="theme-color" content="#07030b" />
+  <link rel="manifest" href="manifest.json" />
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700;800&family=Poppins:wght@300;400;600&family=Playfair+Display:wght@500;700&family=Orbitron:wght@400;600&display=swap" rel="stylesheet" />
+  <link rel="stylesheet" href="style.css" />
 </head>
-
 <body data-theme="dark">
-  <!-- ================= Intro (Video de inicio) ================= -->
-  <div id="intro-overlay">
+
+  <!-- ================= Intro (Video + Logo + Audio) ================= -->
+  <div id="intro-overlay" aria-hidden="false">
     <video id="intro-video" autoplay muted playsinline>
-      <source src="intronivi.mp4" type="video/mp4">
+      <source src="intronivi.mp4" type="video/mp4" />
       Tu navegador no soporta video HTML5.
     </video>
+
+    <!-- animated logo that appears at end of video -->
+    <div id="intro-logo" aria-hidden="true">
+      <img src="novaflow.png" alt="NOVAFLOW" />
+      <div class="intro-logo-text">NOVAFLOW</div>
+    </div>
+
     <div id="intro-overlay-text">Iniciando NOVAFLOW...</div>
+
+    <!-- audio (optional) - will be played programmatically; file must exist -->
+    <audio id="intro-audio" preload="auto" src="prueba1.mp3"></audio>
   </div>
 
   <!-- ================= Contenido principal ================= -->
-  <div id="app">
+  <div id="app" aria-hidden="true">
     <!-- ================= Mensaje Bienvenida (opcional) ================= -->
     <div id="welcomeContainer" class="hidden" aria-hidden="true">
       <div id="nameInputContainer">
@@ -68,7 +78,7 @@
       <header class="topbar">
         <button id="menu-collapse" class="hamburger" aria-label="Contraer menú">☰</button>
         <div class="search-inline">
-          <input id="search" type="search" placeholder="Buscar productos…" aria-label="Buscar productos">
+          <input id="search" type="search" placeholder="Buscar productos…" aria-label="Buscar productos" />
           <button id="search-clear" class="icon-btn" title="Limpiar búsqueda">✕</button>
         </div>
         <div class="topbar-right">
@@ -83,7 +93,7 @@
           <div class="panel-grid">
             <div class="panel-left">
               <h2>Bienvenido a <span class="brand-strong">NOVAFLOW</span></h2>
-              <p class="lead">Comida, bebidas, ropa y coleccionables — ahora más elegante y funcional.</p>
+              <p class="lead">Comida, bebidas, ropa y coleccionables — ahora más elegante, moderno e inteligente.</p>
 
               <div class="cta-row">
                 <button class="btn-primary" data-target="catalog">Explorar tienda</button>
